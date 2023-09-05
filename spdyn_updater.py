@@ -95,18 +95,25 @@ class FritzBox:
         return http_response.read()
 
     def readExternalIPs(self):
-        # Read the netMoni HTML page to scrape external IP addresses
         ipv4 = ''
         ipv6 = ''
-        addrs = bytes.decode(self.getDataPage('netMoni')).split('Adresse: ')
-        for addr in addrs:
-            match = re.match('^(([0-9]{1,3}\\.){3}[0-9]{1,3})', addr[0:100])
-            if match is not None:
-                ipv4 = match.group(1)
-            else:
-                match = re.match('^((([0-9a-fA-F]{1,4}|:):)+[0-9a-fA-F]{1,4})', addr)
+        page = bytes.decode(self.getDataPage('netMoni'))
+        if page[0] == '{':
+            # New data format as JSON
+            jdata = json.loads(page)
+            ipv4 = jdata['data']['connections'][0]['ipv4']['ip']
+            ipv6 = jdata['data']['connections'][0]['ipv6']['ip']
+        else:
+            # Read the netMoni HTML page to scrape external IP addresses
+            addrs = page.split('Adresse: ')
+            for addr in addrs:
+                match = re.match('^(([0-9]{1,3}\\.){3}[0-9]{1,3})', addr[0:100])
                 if match is not None:
-                    ipv6 = match.group(1)
+                    ipv4 = match.group(1)
+                else:
+                    match = re.match('^((([0-9a-fA-F]{1,4}|:):)+[0-9a-fA-F]{1,4})', addr)
+                    if match is not None:
+                        ipv6 = match.group(1)
         return (ipv4, ipv6)
 
 
